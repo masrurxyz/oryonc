@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Oryonc</title>
+    <style>
+        
+  @font-face {
+  font-family: 'Poppins';
+  src: url('font.otf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+    
+    
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .intro-slide {
+          text-align: center;
+          padding: 15px;
+          font-size: 16px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        .balance-section {
+            margin-top: 140px;
+            text-align: center;
+        }
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        .modal-content {
+            height: 55px;
+            text-align: center;
+            animation: slideIn 0.5s forwards;
+        }
+        @keyframes slideIn {
+            from {transform: translateY(100%); opacity: 0;}
+            to {transform: translateY(0); opacity: 1;}
+        }
+        .logo {
+    width: 200px; 
+    height: auto; 
+}
+.btn btn-primary{
+  margin-bottom: 40px;
+}
+
+
+.notification {
+    position: fixed;
+    bottom: 70px;
+    right: -300px; /* Start hidden off-screen */
+    width: 250px;
+    background-color: #f9f9f9;
+    border: 1px solid #fff;
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transition: right 0.5s; /* Smooth slide in */
+}
+
+.notification.show {
+    right: 20px; /* Slide into view */
+}
+
+button {
+    padding: 10px 12px; /* Add padding */
+    background-color: #007bff; /* Button color */
+    color: white; /* Text color */
+    border: none; /* No border */
+    border-radius: 5px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth background color transition */
+}
+
+button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}
+
+
+    </style>
+</head>
+<body>
+
+    <div class="intro-container">
+        <div class="intro-slide active">
+            
+            <div class="bottom-text">Welcome to our App</div>
+        </div>
+        <div class="intro-slide">
+           
+            <div class="bottom-text">Earn Points by Farming</div>
+        </div>
+        <div class="intro-slide">
+           
+            <div class="bottom-text">Invite Friends and Earn More</div>
+        </div>
+    </div>
+
+    <div class="balance-section">
+        <img src="main.png" alt="Logo" class="logo">
+        <h4>Balance: <span id="balance">0</span> ORY</h4>
+        <button id="farmButton" class="btn btn-primary">Farm 80 Points</button>
+        <div id="claimMessage" class="mt-2"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <button id="homeButton" class="btn btn-light"><i class="fas fa-home"></i> Home</button>
+        <button id="referButton" class="btn btn-light"><i class="fas fa-user-plus"></i> Refer</button>
+    </div>
+
+    <div class="modal" id="referModal" style="display:none;">
+        <div class="modal-content">
+            <p>Hold to copy link: <span id="referLink"></span></p>
+        </div>
+    </div>
+
+    <div class="modal" id="streakModal" style="display:none;">
+        <div class="modal-content">
+            <p id="streakMessage"></p>
+        </div>
+    </div>
+    
+    
+    <div id="notification" class="notification">
+        <p>Join our Telegram!</p>
+        <button id="telegramButton">Join</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.intro-slide');
+        let lastClaimTime = localStorage.getItem('lastClaimTime') || 0;
+        const now = Date.now();
+        const eightHours = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+        let balance = parseInt(localStorage.getItem('balance')) || 0;
+        let loginStreak = parseInt(localStorage.getItem('loginStreak')) || 0;
+        const lastLogin = localStorage.getItem('lastLogin');
+
+        document.getElementById('balance').innerText = balance;
+
+        function showSlide(index) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = index;
+            if (currentSlide < slides.length) {
+                slides[currentSlide].classList.add('active');
+            } else {
+                localStorage.setItem('introShown', 'true');
+                document.querySelector('.intro-container').style.display = 'none';
+            }
+        }
+
+        function checkLoginStreak() {
+            if (!lastLogin || (new Date().setHours(0, 0, 0, 0) > new Date(lastLogin).setHours(0, 0, 0, 0))) {
+                loginStreak++;
+                localStorage.setItem('loginStreak', loginStreak);
+                localStorage.setItem('lastLogin', new Date());
+                showStreakPopup(`You've logged in for ${loginStreak} consecutive day(s)!`);
+                // Bonus points for login streak
+                const bonus = loginStreak * 100;
+                balance += bonus;
+                localStorage.setItem('balance', balance);
+                document.getElementById('balance').innerText = balance;
+            } else if (new Date().setHours(0, 0, 0, 0) < new Date(lastLogin).setHours(0, 0, 0, 0)) {
+                showStreakPopup("You've already logged in today.");
+            }
+        }
+
+        function showStreakPopup(message) {
+            document.getElementById('streakMessage').innerText = message;
+            document.getElementById('streakModal').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('streakModal').style.display = 'none';
+            }, 3000);
+        }
+
+        document.getElementById('homeButton').addEventListener('click', function() {
+            
+        });
+
+        document.getElementById('referButton').addEventListener('click', function() {
+            const userId = Math.random().toString(36).substr(2, 9);
+            document.getElementById('referLink').innerText = `http://t.me/oryonc_bot/Oryonc/${userId}`;
+            document.getElementById('referModal').style.display = 'block';
+        });
+
+        document.getElementById('farmButton').addEventListener('click', function() {
+            if (now - lastClaimTime >= eightHours) {
+                balance += 80;
+                lastClaimTime = now;
+                localStorage.setItem('lastClaimTime', lastClaimTime);
+                localStorage.setItem('balance', balance);
+                document.getElementById('balance').innerText = balance;
+                document.getElementById('claimMessage').innerText = "You've successfully claimed 80 points!";
+            } else {
+                const remainingTime = eightHours - (now - lastClaimTime);
+                const hours = Math.floor((remainingTime / (1000 * 60 * 60)) % 24);
+                const minutes = Math.floor((remainingTime / (1000 * 60)) % 60);
+                document.getElementById('claimMessage').innerText = `You can claim again in ${hours}h ${minutes}m.`;
+            }
+        });
+
+        // Initialize slides and login streak
+        if (!localStorage.getItem('introShown')) {
+            showSlide(currentSlide);
+            setTimeout(() => {
+                showSlide(currentSlide + 1);
+                setTimeout(() => {
+                    showSlide(currentSlide + 1);
+                }, 3000);
+            }, 3000);
+        } else {
+            document.querySelector('.intro-container').style.display = 'none';
+        }
+
+        checkLoginStreak(); // Check the login streak on each visit
+    </script>
+    
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+    const notification = document.getElementById("notification");
+    const telegramButton = document.getElementById("telegramButton");
+
+    // Show the notification
+    setTimeout(() => {
+        notification.classList.add("show");
+    }, 1000); // Show after 1 second
+
+    // Automatically close the notification after 5 seconds
+    setTimeout(() => {
+        notification.classList.remove("show");
+    }, 6000); // Close after 6 seconds (1 second to show + 5 seconds displayed)
+
+    // Redirect on button click
+    telegramButton.addEventListener("click", () => {
+        window.location.href = "https://t.me/oryonc"; // Replace with your link
+    });
+});
+
+    </script>
+</body>
+</html>
